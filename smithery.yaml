@@ -1,9 +1,5 @@
 version: "1"
 command: ["python", "core/run_server.py"]
-healthcheck:
-  enabled: true
-  endpoint: /health
-  timeout: 5s
 environment:
   - ZEP_API_KEY
 securityProfile: standard

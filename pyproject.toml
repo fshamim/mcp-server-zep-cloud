@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-server-zep-cloud"
+version = "0.1.0"
+description = "MCP server for Zep Cloud — give Claude long-term memory"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = [
+    "mcp>=1.6.0",
+    "zep-cloud>=3.16.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+mcp-server-zep-cloud = "core.run_server:main_sync"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core"]

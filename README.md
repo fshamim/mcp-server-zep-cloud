@@ -2,149 +2,130 @@
 
 [![smithery badge](https://smithery.ai/badge/mcp-server-zep-cloud)](https://smithery.ai/protocol/mcp-server-zep-cloud)
 
-MCP Server for Zep Cloud provides a bridge between LLM clients and the Zep Cloud API, enabling memory management for AI assistants.
+Give Claude and Codex long-term memory via [Zep Cloud](https://www.getzep.com/) — store conversations, search a knowledge graph, and recall context across sessions.
 
-## Overview
+## Prerequisites
 
-An MCP server for storing and retrieving user memories, preferences, procedures, and factual relationships through the Zep Cloud API. It acts as a semantic memory layer that enables AI assistants to maintain context about users across conversations.
+Get a free Zep Cloud API key at [app.getzep.com](https://app.getzep.com/).
 
-## Tools
+## Quick Start
 
-1. **User Management**:
-   - `create_user`: Create a new user in Zep Cloud
-   - `get_user`: Get details of a user
-   - `update_user`: Update a user's metadata
-   - `delete_user`: Delete a user
-   - `list_users`: List all users
-
-2. **Graph Operations**:
-   - `search_graph`: Search a user's memory graph
-   - `add_graph_data`: Add data to a user's memory graph
-
-3. **Connectivity**:
-   - `check_connection`: Check connection status with the Zep Cloud API
-
-## Environment Variables
-
-| Name | Description | Default Value |
-|------|-------------|---------------|
-| `ZEP_API_KEY` | API key for the Zep Cloud service | None |
-| `MCP_HOST` | Host to bind the server to | `0.0.0.0` |
-| `MCP_PORT` | Port to run the server on | `8080` |
-
-## Installation
-
-### Using Smithery
+### Claude Code (CLI)
 
 ```bash
-npx @smithery/cli install mcp-server-zep-cloud --client claude
+claude mcp add zep-cloud \
+  -e ZEP_API_KEY=your-key \
+  -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
-### Manual Installation with Claude Desktop
+### Codex CLI
 
-1. Clone this repository:
 ```bash
-git clone https://github.com/yourusername/mcp-server-zep-cloud.git
-cd mcp-server-zep-cloud
+codex mcp add zep-cloud \
+  -e ZEP_API_KEY=your-key \
+  -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
-2. Install dependencies:
-```bash
-pip install -r config/requirements.txt
-```
+### Claude Desktop / Codex Desktop
 
-3. Configure Claude Desktop by adding to `claude_desktop_config.json`:
+Add to your config file:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
 ```json
 {
   "mcpServers": {
     "zep-cloud": {
-      "command": "python",
-      "args": ["/path/to/mcp-server-zep-cloud/core/run_server.py"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/fshamim/mcp-server-zep-cloud",
+        "mcp-server-zep-cloud"
+      ],
       "env": {
-        "ZEP_API_KEY": "your_api_key_here"
+        "ZEP_API_KEY": "your-key"
       }
     }
   }
 }
 ```
 
-The configuration file is located at:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-### Using Docker
-
-A Dockerfile is available for building and running the MCP server:
+### Smithery
 
 ```bash
-# Build the container
-docker build -t mcp-server-zep-cloud .
-
-# Run the container
-docker run -p 8080:8080 \
-  -e ZEP_API_KEY="your-api-key" \
-  mcp-server-zep-cloud
+npx @smithery/cli install mcp-server-zep-cloud --client claude
 ```
 
-## Fallback Mode
+### Setup Script (clone + install)
 
-If the server cannot connect to the Zep Cloud API, it automatically starts in fallback mode:
+```bash
+git clone https://github.com/fshamim/mcp-server-zep-cloud.git
+cd mcp-server-zep-cloud
+python scripts/install.py
+```
 
-- All API operations are simulated and return success
-- No actual data is sent to or received from the Zep Cloud API
-- The server remains operational, allowing client integration to function
-- Warning messages are logged to indicate fallback mode
+The script installs the package, prompts for your API key, and configures Claude Desktop automatically.
 
-## Repository Structure
+## Available Tools
 
-- **core/**: Core functionality files
-  - `zep_cloud_client.py`: Client implementation for the Zep Cloud API
-  - `zep_cloud_server.py`: MCP server providing tools for API access
-  - `run_server.py`: Standalone script to run the server directly
+| Tool | Description |
+|------|-------------|
+| `zep_store_memory` | Store content in a memory thread (auto-creates thread) |
+| `zep_get_memory` | Retrieve messages from a thread with pagination and role filtering |
+| `zep_search_memory` | Semantic search across the user's knowledge graph |
+| `zep_get_graph_nodes` | List all entities (nodes) in the knowledge graph |
+| `zep_get_graph_edges` | List all relationships (edges/facts) in the knowledge graph |
+| `zep_get_node_details` | Get detailed info about a node including edges and episodes |
+| `zep_get_thread_context` | Cross-thread context retrieval from past conversations |
 
-- **scripts/**: Utility scripts for operations and testing
-  - `check_user_exists.py`: Utility to check if a user exists
-  - `create_specific_user.py`: Script to create test users
-  - `run_server.sh` / `run_server.bat`: Shell scripts to run the server
+## Docker
 
-- **tests/**: Test scripts
-  - `test_zep_cloud_client.py`: Unit tests for the Zep Cloud client
-  - `test_server_initialization_fixes.py`: Tests for server initialization
-
-- **config/**: Configuration files
-  - `.env.example`: Template for environment configuration
-  - `requirements.txt`: Package dependencies
-
-## Security Considerations
-
-- **API Key Protection**: Never commit your API key to version control
-- **Environment Variables**: Use environment variables for sensitive data
-- **Restricted Access**: Limit the server to trusted networks
-
-## Support for Other Clients
-
-This MCP server is designed to work with any MCP-compatible client. It has been tested with:
-
-- Claude Desktop
-- Claude in web browser
+```bash
+docker build -t mcp-server-zep-cloud .
+docker run -e ZEP_API_KEY="your-key" mcp-server-zep-cloud
+```
 
 ## Development
 
-### Running Tests
+### Project Structure
 
-```bash
-cd tests
-python test_zep_cloud_client.py
-python test_server_initialization_fixes.py
+```
+core/
+  run_server.py          — Entry point, runs asyncio event loop
+  zep_cloud_server.py    — MCP server with 7 tools, stdio transport
+  zep_cloud_client.py    — API client wrapping zep-cloud SDK v3
+config/
+  requirements.txt       — Dependencies (for manual/Smithery installs)
+  .env.example           — Template for environment variables
+scripts/
+  install.py             — Automated setup script
+tests/
+  test_server_tools.py   — Unit tests (no API key needed)
+  test_v3_compatibility.py — Integration tests (requires ZEP_API_KEY)
+pyproject.toml           — Package metadata and build config
 ```
 
-### Running in Development Mode
+### Install for Development
 
 ```bash
-cd scripts
-./run_server.sh
+pip install -e .
+```
+
+### Run the Server
+
+```bash
+mcp-server-zep-cloud          # via console entry point
+python core/run_server.py     # direct execution
+```
+
+### Run Tests
+
+```bash
+python tests/test_server_tools.py        # Unit tests (no API key needed)
+python tests/test_v3_compatibility.py    # Integration tests (requires ZEP_API_KEY)
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
