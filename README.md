@@ -1,7 +1,5 @@
 # MCP Server for Zep Cloud
 
-[![smithery badge](https://smithery.ai/badge/mcp-server-zep-cloud)](https://smithery.ai/protocol/mcp-server-zep-cloud)
-
 Give Claude and Codex long-term memory via [Zep Cloud](https://www.getzep.com/) — store conversations, search a knowledge graph, and recall context across sessions.
 
 ## Prerequisites
@@ -49,12 +47,6 @@ Add to your config file:
     }
   }
 }
-```
-
-### Smithery
-
-```bash
-npx @smithery/cli install mcp-server-zep-cloud --client claude
 ```
 
 ### Setup Script (clone + install)
