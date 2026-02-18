@@ -29,13 +29,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ZepCloudServer")
 
-# Initialize client
-try:
-    client = ZepCloudClient()
-    logger.info("Zep Cloud client ready")
-except Exception as e:
-    logger.error(f"Failed to initialize Zep Cloud client: {e}")
-    client = None
+# Client is initialized lazily on first tool use to avoid blocking the MCP
+# stdio handshake. Module-level network calls prevent the server from
+# responding to the 'initialize' message in time, causing a timeout.
+_client: "ZepCloudClient | None" = None
+
+
+def _get_client() -> "ZepCloudClient":
+    global _client
+    if _client is None:
+        _client = ZepCloudClient()
+        logger.info("Zep Cloud client ready")
+    return _client
 
 # Create MCP server
 server = Server("zep-cloud")
@@ -210,8 +215,11 @@ async def list_tools():
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict):
-    if client is None:
-        return [TextContent(type="text", text=json.dumps({"error": "Zep client not initialized. Check ZEP_API_KEY."}))]
+    try:
+        client = _get_client()
+    except Exception as e:
+        logger.error(f"Failed to initialize Zep Cloud client: {e}")
+        return [TextContent(type="text", text=json.dumps({"error": f"Zep client not initialized: {e}"}))]
 
     try:
         if name == "zep_store_memory":
