@@ -59,17 +59,68 @@ python scripts/install.py
 
 The script installs the package, prompts for your API key, and configures Claude Desktop automatically.
 
+## Concepts
+
+Understanding Zep's data model helps you use the tools correctly.
+
+- **User** (`user_id`): The identity whose memory is being stored — a person, an AI agent, or any entity. Each user has their own isolated knowledge graph. Defaults to `"default_user"` when omitted.
+- **Thread** (`session_id`): A conversation or work session *within* a user's memory. Multiple threads per user are normal; Zep links facts across them automatically via the knowledge graph.
+- **Graph**: Entities and relationships auto-extracted from all of a user's threads. Searchable via `zep_search_memory`, browsable via `zep_get_graph_nodes` / `zep_get_graph_edges`.
+
+## Claude Code Integration
+
+### Set the active user at session start
+
+Run the `/zep-context` skill at the beginning of a session to declare which Zep user all memory calls should target:
+
+```
+/zep-context fshamim
+```
+
+For the rest of the session, every Zep tool call will automatically receive `user_id: "fshamim"`.
+
+### Auto-memory → Zep sync (hook)
+
+Claude Code's auto-memory feature writes notes to `memory/*.md` files. The included hook syncs those writes to Zep automatically so they persist in the knowledge graph.
+
+**Setup:**
+
+1. Set environment variables in `.claude/settings.local.json` (gitignored, keeps credentials private):
+
+```json
+{
+  "env": {
+    "ZEP_API_KEY": "your-key-here",
+    "ZEP_USER_ID": "your-user-id-here"
+  }
+}
+```
+
+2. Enable the hook by copying the hook config from `.claude/settings.json` into your local settings, or configure it globally in `~/.claude/settings.json`.
+
+3. Ensure `zep-cloud` is importable in your Python environment:
+
+```bash
+pip install zep-cloud
+# or, if the server is already installed:
+pip install -e .
+```
+
+**How it works:** After every `Write` or `Edit` tool call that touches a `memory/*.md` file, `hooks/sync_memory_to_zep.py` runs asynchronously. It reads the file content and stores it as a system message in the thread `claude_code_memory_{ZEP_USER_ID}`. The hook exits silently if `ZEP_API_KEY` or `ZEP_USER_ID` is not set, so it never interferes with normal Claude Code operation.
+
 ## Available Tools
+
+All tools that operate on user-specific data accept an optional `user_id` parameter (defaults to `"default_user"`).
 
 | Tool | Description |
 |------|-------------|
-| `zep_store_memory` | Store content in a memory thread (auto-creates thread) |
+| `zep_store_memory` | Store content in a memory thread (auto-creates user + thread) |
 | `zep_get_memory` | Retrieve messages from a thread with pagination and role filtering |
-| `zep_search_memory` | Semantic search across the user's knowledge graph |
-| `zep_get_graph_nodes` | List all entities (nodes) in the knowledge graph |
-| `zep_get_graph_edges` | List all relationships (edges/facts) in the knowledge graph |
+| `zep_search_memory` | Semantic search across a user's knowledge graph |
+| `zep_get_graph_nodes` | List all entities (nodes) in a user's knowledge graph |
+| `zep_get_graph_edges` | List all relationships (edges/facts) in a user's knowledge graph |
 | `zep_get_node_details` | Get detailed info about a node including edges and episodes |
-| `zep_get_thread_context` | Cross-thread context retrieval from past conversations |
+| `zep_get_thread_context` | Cross-thread context retrieval from a user's past conversations |
 
 ## Docker
 

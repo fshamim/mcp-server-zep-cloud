@@ -32,21 +32,21 @@ class ZepCloudClient:
 
         self.client = Zep(api_key=self.api_key)
         self.user_id = DEFAULT_USER_ID
-        self._ensure_user()
+        self._ensure_user(self.user_id)
         logger.info("Zep Cloud client initialized (v3)")
 
-    def _ensure_user(self):
-        """Create the default user if it doesn't exist."""
+    def _ensure_user(self, user_id: str):
+        """Create the user if it doesn't exist."""
         try:
-            self.client.user.add(user_id=self.user_id)
-            logger.info(f"Created user: {self.user_id}")
+            self.client.user.add(user_id=user_id)
+            logger.info(f"Created user: {user_id}")
         except Exception:
-            logger.debug(f"User {self.user_id} already exists")
+            logger.debug(f"User {user_id} already exists")
 
-    def _ensure_thread(self, thread_id: str):
+    def _ensure_thread(self, thread_id: str, user_id: str):
         """Create a thread if it doesn't exist."""
         try:
-            self.client.thread.create(thread_id=thread_id, user_id=self.user_id)
+            self.client.thread.create(thread_id=thread_id, user_id=user_id)
             logger.info(f"Created thread: {thread_id}")
         except Exception:
             logger.debug(f"Thread {thread_id} already exists")
@@ -59,14 +59,18 @@ class ZepCloudClient:
         content: str,
         role: str = "assistant",
         metadata: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Store content as a message in a thread."""
-        self._ensure_thread(session_id)
+        uid = user_id or self.user_id
+        self._ensure_user(uid)
+        self._ensure_thread(session_id, uid)
         messages = [Message(content=content, role=role, metadata=metadata)]
         self.client.thread.add_messages(thread_id=session_id, messages=messages)
         return {
             "success": True,
             "thread_id": session_id,
+            "user_id": uid,
             "role": role,
             "content_length": len(content),
         }
@@ -103,23 +107,27 @@ class ZepCloudClient:
             "messages": messages,
         }
 
-    def get_thread_context(self, session_id: str, mode: str = "summary") -> Dict[str, Any]:
+    def get_thread_context(self, session_id: str, mode: str = "summary", user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get cross-thread context for a session."""
-        self._ensure_thread(session_id)
+        uid = user_id or self.user_id
+        self._ensure_user(uid)
+        self._ensure_thread(session_id, uid)
         context = self.client.thread.get_user_context(thread_id=session_id, mode=mode)
         return {
             "thread_id": session_id,
+            "user_id": uid,
             "mode": mode,
             "context": getattr(context, "context", None),
         }
 
     # --- Graph Operations ---
 
-    def search_graph(self, query: str, limit: int = 10) -> Dict[str, Any]:
+    def search_graph(self, query: str, limit: int = 10, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Search the user's knowledge graph."""
+        uid = user_id or self.user_id
         results = self.client.graph.search(
             query=query,
-            user_id=self.user_id,
+            user_id=uid,
             limit=limit,
         )
 
@@ -151,10 +159,11 @@ class ZepCloudClient:
             "nodes": nodes,
         }
 
-    def get_graph_nodes(self, limit: int = 50) -> Dict[str, Any]:
+    def get_graph_nodes(self, limit: int = 50, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get all nodes from the user's knowledge graph."""
+        uid = user_id or self.user_id
         nodes_list = self.client.graph.node.get_by_user_id(
-            user_id=self.user_id,
+            user_id=uid,
             limit=limit,
         )
 
@@ -170,10 +179,11 @@ class ZepCloudClient:
 
         return {"node_count": len(nodes), "nodes": nodes}
 
-    def get_graph_edges(self, limit: int = 50) -> Dict[str, Any]:
+    def get_graph_edges(self, limit: int = 50, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get all edges (relationships) from the user's knowledge graph."""
+        uid = user_id or self.user_id
         edges_list = self.client.graph.edge.get_by_user_id(
-            user_id=self.user_id,
+            user_id=uid,
             limit=limit,
         )
 

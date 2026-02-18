@@ -71,6 +71,10 @@ TOOLS = [
                     "description": "Message role: 'user', 'assistant', or 'system'.",
                     "default": "assistant",
                 },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
+                },
             },
             "required": ["session_id", "content"],
         },
@@ -93,6 +97,10 @@ TOOLS = [
                     "type": "integer",
                     "description": "Maximum number of results to return.",
                     "default": 10,
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
                 },
             },
             "required": ["query"],
@@ -127,6 +135,10 @@ TOOLS = [
                     "type": "string",
                     "description": "Filter messages by role: 'user', 'assistant', or 'system'.",
                 },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
+                },
             },
             "required": ["session_id"],
         },
@@ -145,6 +157,10 @@ TOOLS = [
                     "description": "Maximum number of nodes to return.",
                     "default": 50,
                 },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
+                },
             },
         },
     ),
@@ -161,6 +177,10 @@ TOOLS = [
                     "type": "integer",
                     "description": "Maximum number of edges to return.",
                     "default": 50,
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
                 },
             },
         },
@@ -201,6 +221,10 @@ TOOLS = [
                     "description": "Context mode: 'summary' (detailed) or 'basic' (faster).",
                     "default": "summary",
                 },
+                "user_id": {
+                    "type": "string",
+                    "description": "Zep user identifier. Defaults to 'default_user' if omitted.",
+                },
             },
             "required": ["session_id"],
         },
@@ -222,18 +246,22 @@ async def call_tool(name: str, arguments: dict):
         return [TextContent(type="text", text=json.dumps({"error": f"Zep client not initialized: {e}"}))]
 
     try:
+        user_id = arguments.get("user_id")
+
         if name == "zep_store_memory":
             result = client.store_memory(
                 session_id=arguments["session_id"],
                 content=arguments["content"],
                 role=arguments.get("role", "assistant"),
                 metadata=arguments.get("metadata"),
+                user_id=user_id,
             )
 
         elif name == "zep_search_memory":
             result = client.search_graph(
                 query=arguments["query"],
                 limit=arguments.get("limit", 10),
+                user_id=user_id,
             )
 
         elif name == "zep_get_memory":
@@ -254,10 +282,10 @@ async def call_tool(name: str, arguments: dict):
                 result["message_count"] = len(result["messages"])
 
         elif name == "zep_get_graph_nodes":
-            result = client.get_graph_nodes(limit=arguments.get("limit", 50))
+            result = client.get_graph_nodes(limit=arguments.get("limit", 50), user_id=user_id)
 
         elif name == "zep_get_graph_edges":
-            result = client.get_graph_edges(limit=arguments.get("limit", 50))
+            result = client.get_graph_edges(limit=arguments.get("limit", 50), user_id=user_id)
 
         elif name == "zep_get_node_details":
             result = client.get_node_details(node_uuid=arguments["node_uuid"])
@@ -266,6 +294,7 @@ async def call_tool(name: str, arguments: dict):
             result = client.get_thread_context(
                 session_id=arguments["session_id"],
                 mode=arguments.get("mode", "summary"),
+                user_id=user_id,
             )
 
         else:
