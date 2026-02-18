@@ -13,6 +13,7 @@ Get a free Zep Cloud API key at [app.getzep.com](https://app.getzep.com/).
 ```bash
 claude mcp add zep-cloud \
   -e ZEP_API_KEY=your-key \
+  -e ZEP_DEFAULT_USER_ID=your-user-id \
   -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
@@ -21,6 +22,7 @@ claude mcp add zep-cloud \
 ```bash
 codex mcp add zep-cloud \
   -e ZEP_API_KEY=your-key \
+  -e ZEP_DEFAULT_USER_ID=your-user-id \
   -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
@@ -28,8 +30,9 @@ codex mcp add zep-cloud \
 
 Add to your config file:
 
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows Claude Desktop**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS Codex Desktop**: `~/Library/Application Support/Codex/codex_desktop_config.json`
 
 ```json
 {
@@ -42,12 +45,15 @@ Add to your config file:
         "mcp-server-zep-cloud"
       ],
       "env": {
-        "ZEP_API_KEY": "your-key"
+        "ZEP_API_KEY": "your-key",
+        "ZEP_DEFAULT_USER_ID": "your-user-id"
       }
     }
   }
 }
 ```
+
+`ZEP_DEFAULT_USER_ID` sets the user for all tool calls that don't explicitly pass a `user_id`. Omit it to fall back to `"default_user"`. Desktop apps don't have a skill system, so this env var is the recommended way to set your identity.
 
 ### Setup Script (clone + install)
 
@@ -63,25 +69,58 @@ The script installs the package, prompts for your API key, and configures Claude
 
 Understanding Zep's data model helps you use the tools correctly.
 
-- **User** (`user_id`): The identity whose memory is being stored — a person, an AI agent, or any entity. Each user has their own isolated knowledge graph. Defaults to `"default_user"` when omitted.
+- **User** (`user_id`): The identity whose memory is being stored — a person, an AI agent, or any entity. Each user has their own isolated knowledge graph.
 - **Thread** (`session_id`): A conversation or work session *within* a user's memory. Multiple threads per user are normal; Zep links facts across them automatically via the knowledge graph.
 - **Graph**: Entities and relationships auto-extracted from all of a user's threads. Searchable via `zep_search_memory`, browsable via `zep_get_graph_nodes` / `zep_get_graph_edges`.
 
-## Claude Code Integration
+## Setting the User Identity
 
-### Set the active user at session start
+Every tool that touches user data accepts an optional `user_id` argument. There are three ways to set it, applied in this priority order (highest wins):
 
-Run the `/zep-context` skill at the beginning of a session to declare which Zep user all memory calls should target:
+### 1. Per tool call (any client)
+
+Pass `user_id` directly in the tool call. This overrides everything else for that single call:
+
+```
+zep_store_memory(session_id="s1", content="...", user_id="alice")
+```
+
+### 2. Per session — Claude Code CLI only
+
+Run the `/zep-context` skill at the start of a session. Claude will pass that `user_id` to every Zep tool call for the rest of the conversation:
 
 ```
 /zep-context fshamim
 ```
 
-For the rest of the session, every Zep tool call will automatically receive `user_id: "fshamim"`.
+This overrides `ZEP_DEFAULT_USER_ID` for the session, but individual tool calls can still override it further.
+
+### 3. Server default — all clients
+
+Set `ZEP_DEFAULT_USER_ID` as an environment variable when starting the server. Every tool call that doesn't explicitly pass a `user_id` will use this value. Falls back to `"default_user"` if not set.
+
+**Claude Desktop / Codex Desktop** — set it in your config JSON (this is the only option available in desktop apps since they have no skill system):
+
+```json
+"env": {
+  "ZEP_API_KEY": "your-key",
+  "ZEP_DEFAULT_USER_ID": "fshamim"
+}
+```
+
+**Claude Code / Codex CLI** — pass it when adding the server:
+
+```bash
+-e ZEP_DEFAULT_USER_ID=fshamim
+```
+
+Even with `ZEP_DEFAULT_USER_ID` set, you or Claude can still address a different user at any time by passing `user_id` explicitly in a tool call. The desktop apps support this — just ask Claude to use a specific user when storing or retrieving memory.
+
+## Claude Code Integration
 
 ### Auto-memory → Zep sync (hook)
 
-Claude Code's auto-memory feature writes notes to `memory/*.md` files. The included hook syncs those writes to Zep automatically so they persist in the knowledge graph.
+Claude Code writes notes to `memory/*.md` files during sessions. The included hook syncs those writes to Zep automatically so they persist in the knowledge graph.
 
 **Setup:**
 

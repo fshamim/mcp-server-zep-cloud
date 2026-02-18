@@ -31,9 +31,9 @@ class ZepCloudClient:
             raise ValueError("ZEP_API_KEY environment variable not set")
 
         self.client = Zep(api_key=self.api_key)
-        self.user_id = DEFAULT_USER_ID
+        self.user_id = os.getenv("ZEP_DEFAULT_USER_ID", DEFAULT_USER_ID)
         self._ensure_user(self.user_id)
-        logger.info("Zep Cloud client initialized (v3)")
+        logger.info(f"Zep Cloud client initialized (v3), default user: {self.user_id}")
 
     def _ensure_user(self, user_id: str):
         """Create the user if it doesn't exist."""
