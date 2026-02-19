@@ -17,22 +17,27 @@ claude mcp add zep-cloud \
   -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
-### Codex CLI
+### Codex (CLI + Desktop)
+
+Codex uses `~/.codex/config.toml` for both CLI and Desktop.
 
 ```bash
 codex mcp add zep-cloud \
-  -e ZEP_API_KEY=your-key \
-  -e ZEP_DEFAULT_USER_ID=your-user-id \
-  -- uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
+  --env ZEP_API_KEY=your-key \
+  --env ZEP_DEFAULT_USER_ID=your-user-id \
+  -- /opt/homebrew/bin/uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
 ```
 
-### Claude Desktop / Codex Desktop
+If the client still shows the old launch command, restart Codex so it reloads MCP config.
 
-Add to your config file:
+If `uvx` is already on your `PATH`, you can replace `/opt/homebrew/bin/uvx` with `uvx`.
+
+### Claude Desktop
+
+Add to your Claude Desktop config file:
 
 - **macOS Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows Claude Desktop**: `%APPDATA%\Claude\claude_desktop_config.json`
-- **macOS Codex Desktop**: `~/Library/Application Support/Codex/codex_desktop_config.json`
 
 ```json
 {
@@ -54,6 +59,20 @@ Add to your config file:
 ```
 
 `ZEP_DEFAULT_USER_ID` sets the user for all tool calls that don't explicitly pass a `user_id`. Omit it to fall back to `"default_user"`. Desktop apps don't have a skill system, so this env var is the recommended way to set your identity.
+
+### Codex Manual Config (optional)
+
+If you prefer editing Codex config directly:
+
+```toml
+[mcp_servers.zep-cloud]
+command = "/opt/homebrew/bin/uvx"
+args = ["--from", "git+https://github.com/fshamim/mcp-server-zep-cloud", "mcp-server-zep-cloud"]
+
+[mcp_servers.zep-cloud.env]
+ZEP_API_KEY = "your-key"
+ZEP_DEFAULT_USER_ID = "your-user-id"
+```
 
 ### Setup Script (clone + install)
 
@@ -99,7 +118,7 @@ This overrides `ZEP_DEFAULT_USER_ID` for the session, but individual tool calls 
 
 Set `ZEP_DEFAULT_USER_ID` as an environment variable when starting the server. Every tool call that doesn't explicitly pass a `user_id` will use this value. Falls back to `"default_user"` if not set.
 
-**Claude Desktop / Codex Desktop** — set it in your config JSON (this is the only option available in desktop apps since they have no skill system):
+**Claude Desktop** — set it in your config JSON (desktop apps have no skill system, so env vars are the recommended default):
 
 ```json
 "env": {
@@ -108,13 +127,62 @@ Set `ZEP_DEFAULT_USER_ID` as an environment variable when starting the server. E
 }
 ```
 
-**Claude Code / Codex CLI** — pass it when adding the server:
+**Codex CLI / Codex Desktop** — set it in `~/.codex/config.toml` (or use `codex mcp add --env ...`):
+
+```toml
+[mcp_servers.zep-cloud.env]
+ZEP_API_KEY = "your-key"
+ZEP_DEFAULT_USER_ID = "fshamim"
+```
+
+**Claude Code** — pass it when adding the server:
 
 ```bash
 -e ZEP_DEFAULT_USER_ID=fshamim
 ```
 
+**Codex CLI** — pass it when adding the server:
+
+```bash
+--env ZEP_DEFAULT_USER_ID=fshamim
+```
+
 Even with `ZEP_DEFAULT_USER_ID` set, you or Claude can still address a different user at any time by passing `user_id` explicitly in a tool call. The desktop apps support this — just ask Claude to use a specific user when storing or retrieving memory.
+
+## Troubleshooting
+
+### Codex: `MCP startup failed: No such file or directory`
+
+Common causes:
+
+- `-e` flags were accidentally put inside `args` instead of using Codex `--env`.
+- `uvx` isn't available on `PATH` for the host app process.
+
+Fix:
+
+```bash
+codex mcp remove zep-cloud
+codex mcp add zep-cloud \
+  --env ZEP_API_KEY=your-key \
+  --env ZEP_DEFAULT_USER_ID=your-user-id \
+  -- /opt/homebrew/bin/uvx --from git+https://github.com/fshamim/mcp-server-zep-cloud mcp-server-zep-cloud
+```
+
+### Local dev: `ImportError: cannot import name 'Zep' from 'zep_cloud'`
+
+Your environment likely has an older `zep-cloud` package. Reinstall from `pyproject.toml` constraints:
+
+```bash
+pip install -e .
+```
+
+### Verify the server quickly
+
+```bash
+python tests/test_server_tools.py
+# requires ZEP_API_KEY in env
+python tests/test_v3_compatibility.py
+```
 
 ## Claude Code Integration
 
